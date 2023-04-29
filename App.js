@@ -7,8 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Platform,
+  Alert,
 } from "react-native";
+import { Fontisto } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Checkbox from "expo-checkbox";
 import { theme } from "./colors";
 
 const STORAGE_KEY = "@toDos";
@@ -17,48 +21,91 @@ export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState("");
   const [toDos, setToDos] = useState({});
-  const travel = () => setWorking(false);
-  const work = () => setWorking(true);
-  const onChangeText = (payload) => setText(payload);
-  const saveToDos = async (toSave) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  };
-  const loadToDos = async () => {
-    const storedData = await AsyncStorage.getItem(STORAGE_KEY);
-    console.log(storedData);
-  };
+  const [completed, setCompleted] = useState(false);
   useEffect(() => {
     loadToDos();
   }, []);
+  const onChangeText = (payload) => setText(payload);
+  const saveToDos = async (toSave) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const loadToDos = async () => {
+    try {
+      const storedData = await AsyncStorage.getItem(STORAGE_KEY);
+      if (storedData) {
+        setToDos(JSON.parse(storedData));
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const addToDo = async () => {
     if (text === "") {
       return;
     }
     const newToDos = {
       ...toDos,
-      [Date.now()]: { text, working },
+      [Date.now()]: { text, working, completed },
     };
     setToDos(newToDos);
     await saveToDos(newToDos);
     setText("");
   };
 
-  console.log(toDos);
+  const deleteToDo = async (key) => {
+    if (Platform.OS === "web") {
+      const ok = confirm("Do you want to delete this To Do?");
+      if (ok) {
+        const newToDos = { ...toDos };
+        delete newToDos[key];
+        setToDos(newToDos);
+        await saveToDos(newToDos);
+      }
+    } else {
+      Alert.alert("Delete To Do", "Are you sure?", [
+        { text: "cancel" },
+        {
+          text: "I'm Sure",
+          style: "destructive",
+          onPress: async () => {
+            const newToDos = { ...toDos };
+            delete newToDos[key];
+            setToDos(newToDos);
+            await saveToDos(newToDos);
+          },
+        },
+      ]);
+    }
+
+    return;
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={work}>
+        <TouchableOpacity onPress={() => setWorking(true)}>
           <Text
-            style={{ ...styles.btnText, color: working ? "white" : theme.grey }}
+            style={{
+              fontSize: 38,
+              fontWeight: 600,
+              color: working ? "white" : theme.grey,
+            }}
           >
             Work
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={travel}>
+        <TouchableOpacity onPress={() => setWorking(false)}>
           <Text
             style={{
-              ...styles.btnText,
+              fontSize: 38,
+              fontWeight: 600,
               color: !working ? "white" : theme.grey,
             }}
           >
@@ -80,6 +127,15 @@ export default function App() {
           toDos[key].working === working ? (
             <View style={styles.toDo} key={key}>
               <Text style={styles.toDoText}>{toDos[key].text}</Text>
+              <View style={styles.toDoBtn}>
+                <Checkbox value={toDos[key].completed}></Checkbox>
+                <TouchableOpacity
+                  style={styles.toDoTrashBtn}
+                  onPress={() => deleteToDo(key)}
+                >
+                  <Fontisto name="trash" size={14} color="white"></Fontisto>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null
         )}
@@ -99,10 +155,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 100,
   },
-  btnText: {
-    fontSize: 38,
-    fontWeight: 600,
-  },
   input: {
     backgroundColor: "white",
     paddingVertical: 15,
@@ -112,6 +164,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   toDo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: theme.grey,
     marginBottom: 10,
     paddingVertical: 20,
@@ -122,5 +177,13 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "500",
+  },
+  toDoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  toDoTrashBtn: {
+    marginLeft: 10,
   },
 });
