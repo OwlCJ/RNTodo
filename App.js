@@ -16,6 +16,7 @@ import Checkbox from "expo-checkbox";
 import { theme } from "./colors";
 
 const STORAGE_KEY = "@toDos";
+const STORAGE_STATE = "@state";
 
 export default function App() {
   const [working, setWorking] = useState(true);
@@ -24,8 +25,31 @@ export default function App() {
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     loadToDos();
+    loadState();
   }, []);
+
+  useEffect(() => {
+    console.log(working);
+  }, [working]);
+
   const onChangeText = (payload) => setText(payload);
+
+  const work = async () => {
+    setWorking(true);
+    await saveState(working);
+  };
+  const travel = async () => {
+    setWorking(false);
+    await saveState(working);
+  };
+
+  const saveState = async (state) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_STATE, state.toString());
+    } catch (e) {
+      console.log(e);
+    }
+  };
   const saveToDos = async (toSave) => {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -34,6 +58,16 @@ export default function App() {
     }
   };
 
+  const loadState = async () => {
+    try {
+      const storedState = await AsyncStorage.getItem(STORAGE_STATE);
+      if (storedState) {
+        setWorking(storedState === "true");
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
   const loadToDos = async () => {
     try {
       const storedData = await AsyncStorage.getItem(STORAGE_KEY);
@@ -90,7 +124,7 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="auto" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setWorking(true)}>
+        <TouchableOpacity onPress={work}>
           <Text
             style={{
               fontSize: 38,
@@ -101,7 +135,7 @@ export default function App() {
             Work
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setWorking(false)}>
+        <TouchableOpacity onPress={travel}>
           <Text
             style={{
               fontSize: 38,
